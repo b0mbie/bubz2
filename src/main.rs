@@ -164,9 +164,10 @@ fn main() -> ExitCode {
 	}
 
 	let compression = {
-		let level: String = args.opt_value_from_str("--level").unwrap()
-			.unwrap_or_else(move || "best".into());
-		match level.as_str() {
+		let level: Cow<'static, str> = args.opt_value_from_str("--level").unwrap()
+			.map(Cow::Owned)
+			.unwrap_or(Cow::Borrowed("best"));
+		match level.as_ref() {
 			"none" => Compression::none(),
 			"fast" => Compression::fast(),
 			"best" => Compression::best(),
