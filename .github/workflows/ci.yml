@@ -1,0 +1,38 @@
+name: Rust
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: Build & Test
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - runner: ubuntu-24.04
+            suffix: linux
+            target: x86_64-unknown-linux-gnu
+            bin_name: bubz2
+          - runner: windows-2022
+            suffix: windows
+            target: x86_64-pc-windows-msvc
+            bin_name: bubz2.exe
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.platform.target }}
+      - name: Build binary
+        run: cargo build --verbose --target ${{ matrix.platform.target }} --release
+      - name: Run unit tests
+        run: cargo test --verbose --target ${{ matrix.platform.target }} --release
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: bubz2-${{ matrix.platform.suffix }}
+          path: target/${{ matrix.platform.target }}/release/${{ matrix.platform.bin_name }}
