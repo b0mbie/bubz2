@@ -31,9 +31,9 @@ fn main() -> ExitCode {
 		eprint!("\
 {} {} - {}
 
---slowdl <path>:
+--from <path>:
 	Source directory, with uncompressed files.
---fastdl <path>:
+--to <path>:
 	Destination directory, to be filled with compressed files.
 --state <path>:
 	Defaults to `--state .fastdl`.
@@ -53,14 +53,14 @@ fn main() -> ExitCode {
 		return ExitCode::SUCCESS
 	}
 
-	let Ok(slowdl_dir): Result<PathBuf, _> = args.value_from_str("--slowdl")
+	let Ok(source_dir): Result<PathBuf, _> = args.value_from_str("--from")
 	else {
-		eprintln!("Expected SlowDL directory (--slowdl).");
+		eprintln!("Expected source directory (--from).");
 		return ExitCode::FAILURE
 	};
-	let Ok(fastdl_dir): Result<PathBuf, _> = args.value_from_str("--fastdl")
+	let Ok(dest_dir): Result<PathBuf, _> = args.value_from_str("--to")
 	else {
-		eprintln!("Expected FastDL directory (--fastdl).");
+		eprintln!("Expected destination directory (--to).");
 		return ExitCode::FAILURE
 	};
 
@@ -94,7 +94,32 @@ fn main() -> ExitCode {
 		pub destination_path: PathBuf,
 	}
 
-	let mut to_traverse = vec![slowdl_dir.clone()];
+	let compression = {
+		let level: Cow<'static, str> = args.opt_value_from_str("--level").unwrap()
+			.map(Cow::Owned)
+			.unwrap_or(Cow::Borrowed("best"));
+		match level.as_ref() {
+			"none" => Compression::none(),
+			"fast" => Compression::fast(),
+			"best" => Compression::best(),
+			"0" => Compression::new(0),
+			"1" => Compression::new(1),
+			"2" => Compression::new(2),
+			"3" => Compression::new(3),
+			"4" => Compression::new(4),
+			"5" => Compression::new(5),
+			"6" => Compression::new(6),
+			"7" => Compression::new(7),
+			"8" => Compression::new(8),
+			"9" => Compression::new(9),
+			level => {
+				eprintln!("Invalid compression level {level:?}.");
+				return ExitCode::FAILURE
+			}
+		}
+	};
+
+	let mut to_traverse = vec![source_dir.clone()];
 	while let Some(dir) = to_traverse.pop() {
 		let items = match dir.read_dir() {
 			Ok(items) => items,
@@ -123,10 +148,10 @@ fn main() -> ExitCode {
 					.expect("system clock should be past the Unix epoch")
 					.as_secs();
 
-				let relative_path = source_path.strip_prefix(&slowdl_dir)
+				let relative_path = source_path.strip_prefix(&source_dir)
 					.expect("item.path() returns with prefix of `dir`");
 
-				let mut destination_path = fastdl_dir.join(relative_path);
+				let mut destination_path = dest_dir.join(relative_path);
 				if let Some(extension) = destination_path.extension() {
 					let mut extension = extension.to_os_string();
 					extension.push(".bz2");
@@ -162,31 +187,6 @@ fn main() -> ExitCode {
 			}
 		}
 	}
-
-	let compression = {
-		let level: Cow<'static, str> = args.opt_value_from_str("--level").unwrap()
-			.map(Cow::Owned)
-			.unwrap_or(Cow::Borrowed("best"));
-		match level.as_ref() {
-			"none" => Compression::none(),
-			"fast" => Compression::fast(),
-			"best" => Compression::best(),
-			"0" => Compression::new(0),
-			"1" => Compression::new(1),
-			"2" => Compression::new(2),
-			"3" => Compression::new(3),
-			"4" => Compression::new(4),
-			"5" => Compression::new(5),
-			"6" => Compression::new(6),
-			"7" => Compression::new(7),
-			"8" => Compression::new(8),
-			"9" => Compression::new(9),
-			level => {
-				eprintln!("Invalid compression level {level:?}.");
-				return ExitCode::FAILURE
-			}
-		}
-	};
 
 	let rt = match Builder::new_multi_thread().build() {
 		Ok(rt) => rt,
