@@ -1,6 +1,7 @@
 /target
 /.fastdl
 
-# Testing directories.
+# Testing stuff.
 /slowdl/*
 /fastdl/*
+.fastdlignore
